@@ -1,31 +1,34 @@
-terraform {
-  required_version = ">= 1.3.0"
-  required_providers {
-    null = {
-      source  = "hashicorp/null"
-      version = ">= 3.2.1"
+// Plan-time validation is implemented via variable validation rules in `variables.tf`
+// combined with lifecycle preconditions on a check resource for dynamic validation
+// based on locals (e.g., reserved labels from label_definitions).
+
+resource "null_resource" "plan_time_check" {
+  count = var.disable_validation ? 0 : 1
+
+  lifecycle {
+    precondition {
+      condition     = length([for k in keys(var.labels) : k if contains(keys(local.mandatory_labels), k)]) == 0
+      error_message = "Cannot override reserved/forced labels. Remove keys: ${join(", ", [for k in keys(var.labels) : k if contains(keys(local.mandatory_labels), k)])}"
     }
-  }
-}
 
-resource "null_resource" "validation" {
-  count = var.disable_validation ? 0 : (
-    length(local.invalid_key_pairs) +
-    length(local.invalid_value_pairs) +
-    length(local.missing_required) +
-    length(local.failed_conditions)
-    > 0 ? 1 : 0
-  )
+    precondition {
+      condition     = length(local.missing_required) == 0
+      error_message = "Missing required label keys: ${join(", ", local.missing_required)}"
+    }
 
-  provisioner "local-exec" {
-    command = join("\n", compact([
-      length(local.invalid_key_pairs) > 0 ? format("Invalid GCP label keys found: %s", join(", ", [for p in local.invalid_key_pairs : p.key])) : null,
-      length(local.invalid_value_pairs) > 0 ? format("Invalid GCP label values found for keys: %s", join(", ", [for p in local.invalid_value_pairs : p.key])) : null,
-      length(local.missing_required) > 0 ? format("Missing required label keys: %s", join(", ", local.missing_required)) : null,
-      length(local.failed_conditions) > 0 ? format("Failed label value conditions: %s", join(" | ", local.failed_conditions)) : null,
-      "See README.md for rules and how to override patterns."
-    ]))
+    precondition {
+      condition     = length(local.failed_conditions) == 0
+      error_message = "Failed label value conditions: ${join(" | ", local.failed_conditions)}"
+    }
 
-    interpreter = ["/bin/sh", "-c"]
+    precondition {
+      condition     = length(local.invalid_key_pairs) == 0
+      error_message = "Invalid GCP label keys found: ${join(", ", [for p in local.invalid_key_pairs : p.key])}"
+    }
+
+    precondition {
+      condition     = length(local.invalid_value_pairs) == 0
+      error_message = "Invalid GCP label values found for keys: ${join(", ", [for p in local.invalid_value_pairs : p.key])}"
+    }
   }
 }

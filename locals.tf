@@ -44,8 +44,8 @@ locals {
   }
 
   # Auto-populate mandatory_labels, default_labels, required_label_keys
-  mandatory_labels = { for k, v in local.label_definitions : k => v.value if v.forced_value }
-  default_labels   = { for k, v in local.label_definitions : k => v.value if v.default }
+  mandatory_labels    = { for k, v in local.label_definitions : k => v.value if v.forced_value }
+  default_labels      = { for k, v in local.label_definitions : k => v.value if v.default }
   required_label_keys = [for k, v in local.label_definitions : k if v.required]
 
   # Evaluate conditions and collect error messages for failed conditions
@@ -61,7 +61,7 @@ locals {
   # Merge mandatory, default, and user-provided labels (user can override default_labels, but not mandatory_labels).
   merged = merge(local.mandatory_labels, local.default_labels, local.filtered_labels)
 
-  invalid_key_pairs  = [for k, v in local.merged : { key = k, value = v } if !var.disable_validation && !(can(regex(local.key_pattern, k)) && length(regexall(local.key_pattern, k)) > 0)]
+  invalid_key_pairs   = [for k, v in local.merged : { key = k, value = v } if !var.disable_validation && !(can(regex(local.key_pattern, k)) && length(regexall(local.key_pattern, k)) > 0)]
   invalid_value_pairs = [for k, v in local.merged : { key = k, value = v } if !var.disable_validation && !(can(regex(local.value_pattern, v)) && length(regexall(local.value_pattern, v)) > 0)]
-  missing_required   = [for req in local.required_label_keys : req if !(contains(keys(local.merged), req))]
+  missing_required    = [for req in local.required_label_keys : req if !(contains(keys(local.merged), req))]
 }

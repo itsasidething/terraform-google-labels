@@ -1,6 +1,6 @@
 
 output "labels" {
-  description = "Merged labels (defaults overwritten by caller labels)"
+  description = "Final labels that passed validation and defaults/overrides applied"
   value       = local.merged
   sensitive   = false
 }
