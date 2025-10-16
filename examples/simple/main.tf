@@ -13,6 +13,9 @@ module "labels" {
     some-none-std-key-that-we-want-to-have = "value"
   }
 
+  # optional disable any validation and overriding
+  disable_validation = false
+
 }
 
 output "merged_labels" {
