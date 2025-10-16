@@ -1,16 +1,55 @@
 locals {
-  # Define all mandatory, non-overridable labels in one place for easy maintenance.
-  mandatory_labels = {
-    cloudautomation  = "tfe"
+  # Centralized label definitions: each key is a label, value is an object with attributes
+  label_definitions = {
+    cloudautomation = {
+      value         = "tfe"
+      forced_value  = true
+      default       = false
+      required      = false
+      condition     = null
+      error_message = null
+    }
+    appid = {
+      value         = "0000"
+      forced_value  = false
+      default       = true
+      required      = false
+      condition     = null
+      error_message = null
+    }
+    env = {
+      value         = null
+      forced_value  = false
+      default       = false
+      required      = true
+      condition     = length(lookup(var.labels, "env", "")) > 0
+      error_message = "Label 'env' must not be empty."
+    }
+    costcenter = {
+      value         = null
+      forced_value  = false
+      default       = false
+      required      = true
+      condition     = can(regex("^[0-9_]+$", lookup(var.labels, "costcenter", "")))
+      error_message = "Label 'costcenter' must contain only digits and underscores."
+    }
+    pii = {
+      value         = null
+      forced_value  = false
+      default       = false
+      required      = true
+      condition     = lookup(var.labels, "pii", "") == "true" || lookup(var.labels, "pii", "") == "false"
+      error_message = "Label 'pii' must be either 'true' or 'false'."
+    }
   }
 
-  # Define default label values (can be overridden by user input) in one place for easy maintenance.
-  default_labels = {
-    appid = "0000"
-  }
+  # Auto-populate mandatory_labels, default_labels, required_label_keys
+  mandatory_labels = { for k, v in local.label_definitions : k => v.value if v.forced_value }
+  default_labels   = { for k, v in local.label_definitions : k => v.value if v.default }
+  required_label_keys = [for k, v in local.label_definitions : k if v.required]
 
-  # Define required label keys (values can be anything) in one place for easy maintenance.
-  required_label_keys = ["env","costcenter", "pii"]
+  # Evaluate conditions and collect error messages for failed conditions
+  failed_conditions = [for k, v in local.label_definitions : v.error_message if v.condition != null && !v.condition]
 
   # Internal patterns for label validation (GCP-compatible)
   key_pattern   = "^[a-z][a-z0-9_-]{0,62}$"
