@@ -1,6 +1,8 @@
+
 output "labels" {
   description = "Merged labels (defaults overwritten by caller labels)"
   value       = local.merged
+  sensitive   = false
 }
 
 output "validation_failed" {
